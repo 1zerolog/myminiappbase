@@ -1,0 +1,11 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "frame": { "version": "next" },
+  "baseBuilder": {
+    "allowedAddresses": ["0xSENIN_BASE_ADRESIN"]
+  }
+}
