@@ -6,6 +6,6 @@
   },
   "frame": { "version": "next" },
   "baseBuilder": {
-    "allowedAddresses": ["0xSENIN_BASE_ADRESIN"]
+    "allowedAddresses": ["0x0654cEEfC62cCc2126b3dE5cE1ded929C724df50"]
   }
 }
