@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import sdk from "@farcaster/frame-sdk";
+import { useMiniApp } from "@farcaster/miniapp-sdk";
 
 type Point = { x: number; y: number };
 type Dir = "up" | "down" | "left" | "right";
@@ -11,32 +11,28 @@ const CELL = 16;
 const BASE_TICK_MS = 140;
 
 export default function Page() {
+  const { user, isReady, openLink } = useMiniApp();
   const [isConnected, setIsConnected] = useState(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    const initFarcaster = async () => {
-      try {
-        await sdk.actions.ready();
-        console.log("Farcaster SDK initialized successfully");
-        
-        // Check if user is connected
-        const user = await sdk.getUser();
-        if (user) {
-          setIsConnected(true);
-          setUserAddress(user.fid.toString());
-        }
-      } catch (error) {
-        console.error("Failed to initialize Farcaster SDK:", error);
-      }
-    };
-
-    initFarcaster();
-  }, []);
+    if (isReady && user) {
+      setIsConnected(true);
+      setUserAddress(user.fid.toString());
+    } else {
+      setIsConnected(false);
+      setUserAddress(null);
+    }
+  }, [isReady, user]);
 
   const connectWallet = async () => {
     try {
-      await sdk.actions.openLink("https://warpcast.com/~/add-cast-action?url=" + encodeURIComponent(window.location.origin + "/api/connect"));
+      // For demo purposes, we'll simulate a connection
+      // In a real mini app, this would be handled by the Farcaster client
+      console.log("Connect wallet clicked - this would open Farcaster wallet connection");
+      alert("In a real Farcaster mini app, this would connect your wallet. For demo purposes, you can play without connecting!");
+      setIsConnected(true);
+      setUserAddress("demo-user");
     } catch (error) {
       console.error("Failed to connect wallet:", error);
     }
@@ -45,7 +41,15 @@ export default function Page() {
   const shareScore = async (score: number) => {
     try {
       const url = typeof window !== "undefined" ? window.location.href : "";
-      await sdk.actions.openLink(`https://warpcast.com/~/compose?text=${encodeURIComponent(`My score is ${score}. Beat me in Snake! ${url}`)}`);
+      const shareText = `🐍 Just scored ${score} points in Snake! Can you beat my score? ${url}`;
+      
+      if (openLink) {
+        await openLink(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`);
+      } else {
+        // Fallback for non-Farcaster environments
+        const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+        window.open(shareUrl, '_blank');
+      }
     } catch (error) {
       console.error("Failed to share score:", error);
     }
@@ -84,16 +88,27 @@ function Gate({ onConnect }: { onConnect: () => void }) {
       <button
         onClick={onConnect}
         style={{
-          padding: "12px 24px",
+          padding: "16px 32px",
           borderRadius: 12,
-          border: "1px solid #333",
-          background: "#111",
+          border: "2px solid #4caf50",
+          background: "linear-gradient(135deg, #4caf50, #45a049)",
           color: "#fff",
-          fontSize: 16,
+          fontSize: 18,
+          fontWeight: "bold",
           cursor: "pointer",
+          transition: "all 0.3s ease",
+          boxShadow: "0 4px 15px rgba(76, 175, 80, 0.3)",
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 6px 20px rgba(76, 175, 80, 0.4)";
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
         }}
       >
-        Connect Wallet
+        🔗 Connect Wallet
       </button>
     </section>
   );
@@ -295,7 +310,16 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
         {!alive ? <Btn onClick={reset}>Start</Btn> : <Btn onClick={() => setAlive(false)}>Pause</Btn>}
-        <Btn onClick={() => onShare(score)}>Share Score</Btn>
+        <Btn 
+          onClick={() => onShare(score)}
+          style={{
+            background: "linear-gradient(135deg, #2196f3, #1976d2)",
+            border: "2px solid #2196f3",
+            boxShadow: "0 4px 15px rgba(33, 150, 243, 0.3)",
+          }}
+        >
+          📤 Share Score
+        </Btn>
       </div>
 
       {/* On-screen D-Pad */}
