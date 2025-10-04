@@ -9,9 +9,9 @@
   },
   "miniapp": {
     "version": "1",
-    "name": "Yilan",
-    "subtitle": "Hizli ve minimal snake",
-    "description": "Farcaster icinde yilan - skorunu paylas, rekabeti baslat.",
+    "name": "Snake",
+    "subtitle": "Fast and Retro snake",
+    "description": "Snake in Farcaster - share your score, start the competition.",
     "primaryCategory": "games",
     "tags": ["game", "snake", "miniapp"],
     "homeUrl": "https://snakegamezerolog.vercel.app",
@@ -21,9 +21,9 @@
     "splashImageUrl": "https://snakegamezerolog.vercel.app/snake-hero.png",
     "splashBackgroundColor": "#0b0b0b",
     "heroImageUrl": "https://snakegamezerolog.vercel.app/snake-hero.png",
-    "tagline": "Skorum kaci biliyor musun?",
-    "ogTitle": "Yilan - Skor Yarisi",
-    "ogDescription": "Skorunu paylas, arkadaslarini gaza getir.",
+    "tagline": "Do you know what my score is ?",
+    "ogTitle": "Snake - Score Race",
+    "ogDescription": "Share your score and inspire your friends.",
     "ogImageUrl": "https://snakegamezerolog.vercel.app/snake-hero.png"
   }
 }
