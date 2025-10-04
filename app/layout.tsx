@@ -7,13 +7,13 @@ import "./globals.css"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "Snake Game - Hızlı ve klasik yılan",
-  description: "Tarayıcıda akıcı, dokunmatik destekli klasik yılan oyunu.",
+  title: "Snake Game - Fast and Classic Snake",
+  description: "Smooth, touch-enabled classic snake game in your browser.",
   generator: "v0.app",
   manifest: "/manifest.json",
   openGraph: {
     title: "Snake Game",
-    description: "Base üzerinde keşfedilebilir hızlı bir mini oyun.",
+    description: "A fast mini game discoverable on Base.",
     images: [
       {
         url: "https://snakegamezerolog.vercel.app/og-1200x630.png",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   other: {
     "fc:frame": "vNext",
     "fc:frame:image": "https://snakegamezerolog.vercel.app/og-1200x630.png",
-    "fc:frame:button:1": "Oyna",
+    "fc:frame:button:1": "Play",
   },
 }
 
@@ -36,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="tr">
+    <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />

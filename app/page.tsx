@@ -1,15 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMiniKit, useComposeCast } from "@coinbase/onchainkit/minikit";
-import { useAccount } from "wagmi";
-// Not: OnchainKit cüzdan butonu için farklı sürümlerde farklı yollar var.
-// Aşağıdaki iki importtan BİRİ sizde çalışacaktır.
-// 1) (sık karşılaşılan)
-// @ts-ignore
-import { ConnectWallet } from "@coinbase/onchainkit/wallet";
-// 2) Alternatif (eğer üstteki import hata verirse şunu deneyin):
-// import { ConnectButton as ConnectWallet } from "@coinbase/onchainkit";
+import sdk from "@farcaster/frame-sdk";
 
 type Point = { x: number; y: number };
 type Dir = "up" | "down" | "left" | "right";
@@ -19,13 +11,45 @@ const CELL = 16;
 const BASE_TICK_MS = 140;
 
 export default function Page() {
-  // --- MiniKit: frame ready & share
-  const { setFrameReady, isFrameReady } = useMiniKit();
-  const { composeCast } = useComposeCast();
-  useEffect(() => { if (!isFrameReady) setFrameReady(); }, [isFrameReady, setFrameReady]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [userAddress, setUserAddress] = useState<string | null>(null);
 
-  // --- Wallet gate
-  const { address, isConnected } = useAccount();
+  useEffect(() => {
+    const initFarcaster = async () => {
+      try {
+        await sdk.actions.ready();
+        console.log("Farcaster SDK initialized successfully");
+        
+        // Check if user is connected
+        const user = await sdk.getUser();
+        if (user) {
+          setIsConnected(true);
+          setUserAddress(user.fid.toString());
+        }
+      } catch (error) {
+        console.error("Failed to initialize Farcaster SDK:", error);
+      }
+    };
+
+    initFarcaster();
+  }, []);
+
+  const connectWallet = async () => {
+    try {
+      await sdk.actions.openLink("https://warpcast.com/~/add-cast-action?url=" + encodeURIComponent(window.location.origin + "/api/connect"));
+    } catch (error) {
+      console.error("Failed to connect wallet:", error);
+    }
+  };
+
+  const shareScore = async (score: number) => {
+    try {
+      const url = typeof window !== "undefined" ? window.location.href : "";
+      await sdk.actions.openLink(`https://warpcast.com/~/compose?text=${encodeURIComponent(`My score is ${score}. Beat me in Snake! ${url}`)}`);
+    } catch (error) {
+      console.error("Failed to share score:", error);
+    }
+  };
 
   return (
     <main
@@ -39,29 +63,38 @@ export default function Page() {
       }}
     >
       {!isConnected ? (
-        <Gate />
+        <Gate onConnect={connectWallet} />
       ) : (
         <Game
-          onShare={(score) => {
-            const url = typeof window !== "undefined" ? window.location.href : "";
-            composeCast({ text: `My score is ${score}. Beat me in Snake!`, embeds: [url] });
-          }}
-          playerAddress={address ?? undefined}
+          onShare={shareScore}
+          playerAddress={userAddress ?? undefined}
         />
       )}
     </main>
   );
 }
 
-function Gate() {
+function Gate({ onConnect }: { onConnect: () => void }) {
   return (
     <section style={{ display: "grid", gap: 12, placeItems: "center", textAlign: "center" }}>
       <h1 style={{ margin: 0 }}>🐍 Snake</h1>
       <p style={{ opacity: 0.8, maxWidth: 420 }}>
         Connect your wallet to start. You can play with keyboard arrows, on-screen controls, or touch swipes.
       </p>
-      {/* OnchainKit cüzdan butonu */}
-      <ConnectWallet />
+      <button
+        onClick={onConnect}
+        style={{
+          padding: "12px 24px",
+          borderRadius: 12,
+          border: "1px solid #333",
+          background: "#111",
+          color: "#fff",
+          fontSize: 16,
+          cursor: "pointer",
+        }}
+      >
+        Connect Wallet
+      </button>
     </section>
   );
 }
