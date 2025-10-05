@@ -34,6 +34,18 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="fc:miniapp" content='{
+          "version":"next",
+          "imageUrl":"/snake-hero.png",
+          "button":{
+            "title":"Play Snake Game",
+            "action":{
+              "type":"launch_miniapp",
+              "name":"Snake Game",
+              "url":"/"
+            }
+          }
+        }' />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
