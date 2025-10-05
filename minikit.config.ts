@@ -1,13 +1,11 @@
 // Base Mini App manifesti — farcaster.json bu dosyadan üretilir (quickstart şablonlarında).
 export const minikitConfig = {
   accountAssociation: {
-    // 4. adımda Base'in doğrulama aracından alıp dolduracağız
-    header: "",
-    payload: "",
-    signature: "",
+    header: "eyJmaWQiOjI4MjY1MSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweDEzOGNGQ0QxZTVFMEFkZkM4ZUZmQzMxNzg3MmY4YWU5MjkxMjdGMjgifQ",
+    payload: "eyJkb21haW4iOiJzbmFrZWdhbWV6ZXJvbG9nLnZlcmNlbC5hcHAifQ",
+    signature: "xXZnF6VRNwGmCMDIkjMyfC2XZgenZy+51W7izBbPNxAkd0+4NGVFT9Xwx1qaAUv2c5KqRf640dddQr7WkfA+mxw=",
   },
   baseBuilder: {
-    // Senin cüzdanın (bunu bana vermiştin)
     allowedAddresses: ["0xe1bf2Dd72A8A026bEb20d8bF75276DF260507eFc"],
   },
   miniapp: {
