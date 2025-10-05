@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMiniApp } from "@farcaster/miniapp-sdk";
 
 type Point = { x: number; y: number };
 type Dir = "up" | "down" | "left" | "right";
@@ -11,19 +10,8 @@ const CELL = 16;
 const BASE_TICK_MS = 140;
 
 export default function Page() {
-  const { user, isReady, openLink } = useMiniApp();
   const [isConnected, setIsConnected] = useState(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isReady && user) {
-      setIsConnected(true);
-      setUserAddress(user.fid.toString());
-    } else {
-      setIsConnected(false);
-      setUserAddress(null);
-    }
-  }, [isReady, user]);
 
   const connectWallet = async () => {
     try {
@@ -43,12 +31,15 @@ export default function Page() {
       const url = typeof window !== "undefined" ? window.location.href : "";
       const shareText = `🐍 Just scored ${score} points in Snake! Can you beat my score? ${url}`;
       
-      if (openLink) {
-        await openLink(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`);
-      } else {
-        // Fallback for non-Farcaster environments
-        const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-        window.open(shareUrl, '_blank');
+      // Try to open Farcaster compose first, fallback to Twitter
+      const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`;
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+      
+      // Try Farcaster first, if it fails, try Twitter
+      try {
+        window.open(farcasterUrl, '_blank');
+      } catch {
+        window.open(twitterUrl, '_blank');
       }
     } catch (error) {
       console.error("Failed to share score:", error);
