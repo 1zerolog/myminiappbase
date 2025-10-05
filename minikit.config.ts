@@ -12,27 +12,27 @@ export const minikitConfig = {
   },
   miniapp: {
     version: "1",
-    name: "Snake",
-    subtitle: "Fast & minimal snake game",
-    description: "Classic snake game in Farcaster — share your score, start the competition.",
+    name: "Yılan",
+    subtitle: "Hızlı & minimal snake",
+    description: "Farcaster içinde yılan — skorunu paylaş, rekabeti başlat.",
     primaryCategory: "games",
     tags: ["game", "snake", "miniapp"],
 
-    // live site:
+    // siten canlı:
     homeUrl: "https://snakegamezerolog.vercel.app",
     webhookUrl: "https://snakegamezerolog.vercel.app/api/webhook",
 
-    // images
+    // görseller (2. adımda public/ içine yükleyeceğiz)
     iconUrl: "https://snakegamezerolog.vercel.app/snake-icon.png",
     screenshotUrls: ["https://snakegamezerolog.vercel.app/screenshot-portrait.png"],
     splashImageUrl: "https://snakegamezerolog.vercel.app/snake-hero.png",
-    splashBackgroundColor: "#667eea",
+    splashBackgroundColor: "#0b0b0b",
 
-    // social/OG
+    // sosyal/OG
     heroImageUrl: "https://snakegamezerolog.vercel.app/snake-hero.png",
-    tagline: "Can you beat my score?",
-    ogTitle: "Snake – Score Challenge",
-    ogDescription: "Share your score, challenge your friends.",
+    tagline: "Skorum kaç biliyor musun?",
+    ogTitle: "Yılan – Skor Yarışı",
+    ogDescription: "Skorunu paylaş, arkadaşlarını gaza getir.",
     ogImageUrl: "https://snakegamezerolog.vercel.app/snake-hero.png",
   },
 } as const;
