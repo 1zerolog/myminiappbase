@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { getWalletClient, getPublicClient, switchToBaseNetwork } from "@/lib/web3"
+import { SNAKE_NFT_CONTRACT } from "@/lib/contract"
 
 type Point = { x: number; y: number }
 type Dir = "up" | "down" | "left" | "right"
@@ -17,7 +19,6 @@ export default function Page() {
   useEffect(() => {
     const checkFarcasterContext = async () => {
       try {
-        // Check if running in Farcaster frame context
         if (typeof window !== "undefined" && (window as any).ethereum) {
           const accounts = await (window as any).ethereum.request({
             method: "eth_accounts",
@@ -30,14 +31,7 @@ export default function Page() {
       } catch (error) {
         console.log("Not in Farcaster context or wallet not connected")
       } finally {
-        // Auto-connect after short delay for demo
-        setTimeout(() => {
-          setIsLoading(false)
-          if (!isConnected) {
-            setIsConnected(true)
-            setUserAddress("0xDemo" + Math.random().toString(16).slice(2, 10))
-          }
-        }, 500)
+        setIsLoading(false)
       }
     }
 
@@ -55,7 +49,6 @@ export default function Page() {
           setIsConnected(true)
         }
       } else {
-        // Fallback for demo purposes
         setUserAddress("0x" + Math.random().toString(16).slice(2, 42))
         setIsConnected(true)
       }
@@ -142,6 +135,8 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
   const [speed, setSpeed] = useState(INITIAL_SPEED)
   const [showNFTPrompt, setShowNFTPrompt] = useState(false)
   const [isMinting, setIsMinting] = useState(false)
+  const [mintStatus, setMintStatus] = useState<string>("")
+  const [txHash, setTxHash] = useState<string>("")
 
   useEffect(() => {
     dirRef.current = dir
@@ -371,6 +366,8 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
     setGameOver(false)
     setGameStarted(true)
     setShowNFTPrompt(false)
+    setMintStatus("")
+    setTxHash("")
   }
 
   const handleDirChange = (newDir: Dir) => {
@@ -385,16 +382,96 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
 
   const handleMintNFT = async () => {
     setIsMinting(true)
+    setMintStatus("Checking network...")
+
+    console.log("[v0] Starting NFT mint process")
+    console.log("[v0] Player address:", playerAddress)
+    console.log("[v0] Score:", score)
+    console.log("[v0] Contract address:", SNAKE_NFT_CONTRACT.address)
+
     try {
-      // Simulate NFT minting process
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      alert(`NFT Minted! Your score of ${score} has been immortalized on the blockchain!`)
-      setShowNFTPrompt(false)
-    } catch (error) {
-      console.error("Failed to mint NFT:", error)
-      alert("Failed to mint NFT. Please try again.")
-    } finally {
-      setIsMinting(false)
+      if (SNAKE_NFT_CONTRACT.address === "0x0000000000000000000000000000000000000000") {
+        console.log("[v0] ERROR: Contract not deployed")
+        setMintStatus(
+          "⚠️ Contract not deployed! Please deploy the smart contract first and update the address in lib/contract.ts",
+        )
+        setTimeout(() => {
+          setIsMinting(false)
+        }, 5000)
+        return
+      }
+
+      if (typeof window === "undefined" || !(window as any).ethereum) {
+        console.log("[v0] ERROR: No ethereum provider found")
+        setMintStatus("⚠️ No wallet detected. Please install MetaMask or use a Web3 browser.")
+        setTimeout(() => {
+          setIsMinting(false)
+          setMintStatus("")
+        }, 3000)
+        return
+      }
+
+      // Switch to Base network
+      console.log("[v0] Switching to Base Sepolia network...")
+      setMintStatus("Switching to Base network...")
+      await switchToBaseNetwork()
+      console.log("[v0] Network switched successfully")
+
+      // Get wallet client
+      console.log("[v0] Getting wallet client...")
+      setMintStatus("Preparing transaction...")
+      const walletClient = getWalletClient()
+      const [address] = await walletClient.getAddresses()
+      console.log("[v0] Wallet address:", address)
+
+      // Call mintScore function
+      console.log("[v0] Calling mintScore with score:", score)
+      setMintStatus("Waiting for confirmation...")
+      const hash = await walletClient.writeContract({
+        address: SNAKE_NFT_CONTRACT.address as `0x${string}`,
+        abi: SNAKE_NFT_CONTRACT.abi,
+        functionName: "mintScore",
+        args: [BigInt(score)],
+        account: address,
+      })
+
+      console.log("[v0] Transaction hash:", hash)
+      setTxHash(hash)
+      setMintStatus("Confirming transaction...")
+
+      // Wait for transaction confirmation
+      const publicClient = getPublicClient()
+      console.log("[v0] Waiting for transaction receipt...")
+      await publicClient.waitForTransactionReceipt({ hash })
+
+      console.log("[v0] NFT minted successfully!")
+      setMintStatus("✅ NFT Minted Successfully!")
+      setTimeout(() => {
+        setShowNFTPrompt(false)
+        setIsMinting(false)
+        setMintStatus("")
+      }, 3000)
+    } catch (error: any) {
+      console.error("[v0] Failed to mint NFT:", error)
+      console.error("[v0] Error message:", error.message)
+      console.error("[v0] Error code:", error.code)
+
+      if (error.message?.includes("User rejected") || error.code === 4001) {
+        setMintStatus("❌ Transaction rejected by user")
+      } else if (error.message?.includes("Score must be at least 30")) {
+        setMintStatus("❌ Score must be at least 30 to mint")
+      } else if (error.message?.includes("No ethereum provider")) {
+        setMintStatus("❌ No wallet detected. Please install MetaMask.")
+      } else if (error.code === -32603) {
+        setMintStatus("❌ Contract error. Make sure the contract is deployed correctly.")
+      } else {
+        setMintStatus(`❌ Failed to mint: ${error.message?.slice(0, 50) || "Unknown error"}`)
+      }
+
+      setTimeout(() => {
+        setIsMinting(false)
+        setMintStatus("")
+      }, 5000)
     }
   }
 
@@ -439,7 +516,7 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
           <p className="text-2xl text-primary mb-2">Score: {score}</p>
           {score === highScore && score > 0 && <p className="text-lg text-accent mb-4">🎉 New High Score!</p>}
 
-          {showNFTPrompt && !isMinting && (
+          {showNFTPrompt && !isMinting && !mintStatus && (
             <div className="mt-6 p-4 bg-card/80 rounded-xl border border-primary/30">
               <p className="text-base text-foreground mb-3">
                 Great score! Would you like to mint this as an NFT memory?
@@ -461,10 +538,20 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
             </div>
           )}
 
-          {isMinting && (
+          {(isMinting || mintStatus) && (
             <div className="mt-6 p-4 bg-card/80 rounded-xl">
               <div className="animate-spin text-4xl mb-2">⚡</div>
-              <p className="text-foreground">Minting your NFT...</p>
+              <p className="text-foreground font-semibold">{mintStatus}</p>
+              {txHash && (
+                <a
+                  href={`https://sepolia.basescan.org/tx/${txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline mt-2 block"
+                >
+                  View on BaseScan
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -487,7 +574,6 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         </button>
       </div>
 
-      {/* D-Pad Controls */}
       <div className="grid grid-cols-3 gap-2 p-4 bg-muted/30 backdrop-blur-sm rounded-2xl">
         <div />
         <button
