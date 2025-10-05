@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 type Point = { x: number; y: number };
 type Dir = "up" | "down" | "left" | "right";
 
-const GRID = 20;
-const CELL = 16;
-const BASE_TICK_MS = 140;
+const GRID = 25;
+const CELL = 20;
+const BASE_TICK_MS = 120;
 
 export default function Page() {
   const [isConnected, setIsConnected] = useState(false);
@@ -110,11 +110,11 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
   const loopRef = useRef<number | null>(null);
 
   const [snake, setSnake] = useState<Point[]>([
-    { x: 5, y: 10 },
-    { x: 4, y: 10 },
-    { x: 3, y: 10 },
+    { x: 8, y: 12 },
+    { x: 7, y: 12 },
+    { x: 6, y: 12 },
   ]);
-  const [food, setFood] = useState<Point>({ x: 12, y: 10 });
+  const [food, setFood] = useState<Point>({ x: 15, y: 12 });
   const [dir, setDir] = useState<Dir>("right");
   const [alive, setAlive] = useState(false);
   const [score, setScore] = useState(0);
@@ -138,49 +138,71 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // --- Touch swipe controls
+  // --- Touch swipe controls (improved)
   useEffect(() => {
-    const area = canvasRef.current?.parentElement as HTMLElement | null;
-    if (!area) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     let startX = 0, startY = 0, active = false;
+    let lastMoveTime = 0;
 
     const start = (e: TouchEvent) => {
-      if (!e.touches?.[0]) return;
+      if (!e.touches?.[0] || !alive) return;
+      e.preventDefault();
       active = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
+      lastMoveTime = Date.now();
     };
+
+    const move = (e: TouchEvent) => {
+      if (!active || !e.touches?.[0] || !alive) return;
+      e.preventDefault();
+      
+      const now = Date.now();
+      if (now - lastMoveTime < 50) return; // Throttle moves
+      lastMoveTime = now;
+      
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const dx = currentX - startX;
+      const dy = currentY - startY;
+      const absx = Math.abs(dx), absy = Math.abs(dy);
+      const TH = 30; // Increased threshold for better control
+      
+      if (absx > TH || absy > TH) {
+        setDir((prev) => {
+          if (absx > absy) {
+            // horizontal
+            if (dx > 0 && prev !== "left") return "right";
+            if (dx < 0 && prev !== "right") return "left";
+          } else {
+            // vertical
+            if (dy > 0 && prev !== "up") return "down";
+            if (dy < 0 && prev !== "down") return "up";
+          }
+          return prev;
+        });
+        active = false; // Reset after successful move
+      }
+    };
+
     const end = (e: TouchEvent) => {
       if (!active) return;
-      const t = e.changedTouches?.[0];
-      if (!t) return;
-      const dx = t.clientX - startX;
-      const dy = t.clientY - startY;
-      const absx = Math.abs(dx), absy = Math.abs(dy);
-      const TH = 24; // swipe threshold (px)
-      setDir((prev) => {
-        if (absx < TH && absy < TH) return prev; // tiny move, ignore
-        if (absx > absy) {
-          // horizontal
-          if (dx > 0 && prev !== "left") return "right";
-          if (dx < 0 && prev !== "right") return "left";
-        } else {
-          // vertical
-          if (dy > 0 && prev !== "up") return "down";
-          if (dy < 0 && prev !== "down") return "up";
-        }
-        return prev;
-      });
+      e.preventDefault();
       active = false;
     };
 
-    area.addEventListener("touchstart", start, { passive: true });
-    area.addEventListener("touchend", end, { passive: true });
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end, { passive: false });
+    
     return () => {
-      area.removeEventListener("touchstart", start);
-      area.removeEventListener("touchend", end);
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", end);
     };
-  }, []);
+  }, [alive]);
 
   // --- Game step
   function step() {
@@ -244,46 +266,189 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = "#000";
+    
+    // Clear canvas with gradient background
+    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, "#0f0f23");
+    gradient.addColorStop(1, "#1a1a2e");
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // food
-    ctx.fillStyle = "#e53935";
-    ctx.fillRect(food.x * CELL, food.y * CELL, CELL, CELL);
-
-    // snake
-    ctx.fillStyle = "#4caf50";
-    for (const p of snake) {
-      ctx.fillRect(p.x * CELL, p.y * CELL, CELL, CELL);
+    // Draw grid lines
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= GRID; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * CELL, 0);
+      ctx.lineTo(i * CELL, canvas.height);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(0, i * CELL);
+      ctx.lineTo(canvas.width, i * CELL);
+      ctx.stroke();
     }
+
+    // Draw food with glow effect
+    const foodX = food.x * CELL + CELL / 2;
+    const foodY = food.y * CELL + CELL / 2;
+    const foodRadius = CELL / 2 - 2;
+    
+    // Glow effect
+    const foodGlow = ctx.createRadialGradient(foodX, foodY, 0, foodX, foodY, foodRadius + 5);
+    foodGlow.addColorStop(0, "rgba(255, 100, 100, 0.8)");
+    foodGlow.addColorStop(0.7, "rgba(255, 100, 100, 0.3)");
+    foodGlow.addColorStop(1, "rgba(255, 100, 100, 0)");
+    ctx.fillStyle = foodGlow;
+    ctx.beginPath();
+    ctx.arc(foodX, foodY, foodRadius + 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Food body
+    const foodGradient = ctx.createRadialGradient(foodX, foodY, 0, foodX, foodY, foodRadius);
+    foodGradient.addColorStop(0, "#ff6b6b");
+    foodGradient.addColorStop(0.7, "#ee5a52");
+    foodGradient.addColorStop(1, "#e74c3c");
+    ctx.fillStyle = foodGradient;
+    ctx.beginPath();
+    ctx.arc(foodX, foodY, foodRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Food highlight
+    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.beginPath();
+    ctx.arc(foodX - 3, foodY - 3, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw snake with gradient and effects
+    snake.forEach((p, index) => {
+      const x = p.x * CELL;
+      const y = p.y * CELL;
+      const isHead = index === 0;
+      
+      if (isHead) {
+        // Snake head with gradient
+        const headGradient = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
+        headGradient.addColorStop(0, "#4ecdc4");
+        headGradient.addColorStop(0.5, "#44a08d");
+        headGradient.addColorStop(1, "#093637");
+        ctx.fillStyle = headGradient;
+        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+        
+        // Head shine effect
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.fillRect(x + 2, y + 2, CELL / 2, CELL / 2);
+        
+        // Eyes
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x + CELL * 0.3, y + CELL * 0.3, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + CELL * 0.7, y + CELL * 0.3, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Eye pupils
+        ctx.fillStyle = "#000";
+        ctx.beginPath();
+        ctx.arc(x + CELL * 0.3, y + CELL * 0.3, 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + CELL * 0.7, y + CELL * 0.3, 1, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Snake body with gradient
+        const bodyGradient = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
+        bodyGradient.addColorStop(0, "#6c5ce7");
+        bodyGradient.addColorStop(0.5, "#5f3dc4");
+        bodyGradient.addColorStop(1, "#4c63d2");
+        ctx.fillStyle = bodyGradient;
+        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
+        
+        // Body pattern
+        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+        ctx.fillRect(x + 2, y + 2, CELL - 4, 2);
+        ctx.fillRect(x + 2, y + CELL - 4, CELL - 4, 2);
+      }
+    });
   }
 
   function reset() {
     setSnake([
-      { x: 5, y: 10 },
-      { x: 4, y: 10 },
-      { x: 3, y: 10 },
+      { x: 8, y: 12 },
+      { x: 7, y: 12 },
+      { x: 6, y: 12 },
     ]);
     setDir("right");
     setScore(0);
-    setFood({ x: 12, y: 10 });
+    setFood({ x: 15, y: 12 });
     setAlive(true);
   }
 
-  // On-screen buttons
+  // On-screen buttons (improved)
   const Btn = (p: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button
       {...p}
       style={{
-        padding: "10px 12px",
-        borderRadius: 12,
-        border: "1px solid #333",
-        background: "#111",
+        padding: "12px 16px",
+        borderRadius: 16,
+        border: "2px solid #4caf50",
+        background: "linear-gradient(135deg, #4caf50, #45a049)",
         color: "#fff",
-        fontSize: 16,
+        fontSize: 18,
+        fontWeight: "bold",
         cursor: "pointer",
+        transition: "all 0.2s ease",
+        boxShadow: "0 4px 15px rgba(76, 175, 80, 0.3)",
+        minWidth: "60px",
+        minHeight: "50px",
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = "scale(0.95)";
+        e.currentTarget.style.boxShadow = "0 2px 8px rgba(76, 175, 80, 0.5)";
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
+      }}
+    />
+  );
+
+  const DPadBtn = (p: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button
+      {...p}
+      style={{
+        padding: "8px",
+        borderRadius: 12,
+        border: "2px solid #6c5ce7",
+        background: "linear-gradient(135deg, #6c5ce7, #5f3dc4)",
+        color: "#fff",
+        fontSize: 24,
+        fontWeight: "bold",
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        boxShadow: "0 4px 15px rgba(108, 92, 231, 0.3)",
+        width: "60px",
+        height: "60px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = "scale(0.9)";
+        e.currentTarget.style.boxShadow = "0 2px 8px rgba(108, 92, 231, 0.5)";
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 4px 15px rgba(108, 92, 231, 0.3)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 4px 15px rgba(108, 92, 231, 0.3)";
       }}
     />
   );
@@ -297,7 +462,15 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         </p>
       </header>
 
-      <canvas ref={canvasRef} style={{ border: "1px solid #222", borderRadius: 12 }} />
+      <canvas 
+        ref={canvasRef} 
+        style={{ 
+          border: "3px solid #4caf50", 
+          borderRadius: 16,
+          boxShadow: "0 8px 32px rgba(76, 175, 80, 0.3)",
+          background: "linear-gradient(135deg, #0f0f23, #1a1a2e)"
+        }} 
+      />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
         {!alive ? <Btn onClick={reset}>Start</Btn> : <Btn onClick={() => setAlive(false)}>Pause</Btn>}
@@ -313,24 +486,42 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         </Btn>
       </div>
 
-      {/* On-screen D-Pad */}
+      {/* On-screen D-Pad (improved) */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3,64px)",
-          gap: 6,
-          marginTop: 6,
+          gridTemplateColumns: "repeat(3, 80px)",
+          gap: 8,
+          marginTop: 12,
           userSelect: "none",
+          padding: "16px",
+          background: "rgba(0, 0, 0, 0.3)",
+          borderRadius: "20px",
+          backdropFilter: "blur(10px)",
         }}
       >
         <span />
-        <Btn onClick={() => setDir((d) => (d !== "down" ? "up" : d))}>↑</Btn>
+        <DPadBtn onClick={() => setDir((d) => (d !== "down" ? "up" : d))}>↑</DPadBtn>
         <span />
-        <Btn onClick={() => setDir((d) => (d !== "right" ? "left" : d))}>←</Btn>
-        <Btn disabled>•</Btn>
-        <Btn onClick={() => setDir((d) => (d !== "left" ? "right" : d))}>→</Btn>
+        <DPadBtn onClick={() => setDir((d) => (d !== "right" ? "left" : d))}>←</DPadBtn>
+        <div style={{
+          width: "60px",
+          height: "60px",
+          borderRadius: "12px",
+          background: "linear-gradient(135deg, #2c2c54, #40407a)",
+          border: "2px solid #6c5ce7",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#fff",
+          fontSize: "20px",
+          fontWeight: "bold",
+        }}>
+          🎮
+        </div>
+        <DPadBtn onClick={() => setDir((d) => (d !== "left" ? "right" : d))}>→</DPadBtn>
         <span />
-        <Btn onClick={() => setDir((d) => (d !== "up" ? "down" : d))}>↓</Btn>
+        <DPadBtn onClick={() => setDir((d) => (d !== "up" ? "down" : d))}>↓</DPadBtn>
         <span />
       </div>
 
