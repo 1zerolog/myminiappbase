@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { sdk } from "@farcaster/miniapp-sdk"
 import { getWalletClient, getPublicClient, switchToBaseNetwork } from "@/lib/web3"
 import { SNAKE_NFT_CONTRACT } from "@/lib/contract"
 
@@ -17,8 +18,9 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const checkFarcasterContext = async () => {
+    const initializeApp = async () => {
       try {
+        // Farcaster context kontrolü
         if (typeof window !== "undefined" && (window as any).ethereum) {
           const accounts = await (window as any).ethereum.request({
             method: "eth_accounts",
@@ -28,6 +30,9 @@ export default function Page() {
             setIsConnected(true)
           }
         }
+        
+        // Farcaster'a uygulamanın hazır olduğunu bildir
+        await sdk.actions.ready()
       } catch (error) {
         console.log("Not in Farcaster context or wallet not connected")
       } finally {
@@ -35,7 +40,7 @@ export default function Page() {
       }
     }
 
-    checkFarcasterContext()
+    initializeApp()
   }, [])
 
   const connectWallet = async () => {
