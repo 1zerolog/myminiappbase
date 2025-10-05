@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 type Point = { x: number; y: number };
 type Dir = "up" | "down" | "left" | "right";
 
-const GRID = 20;
-const CELL = 25;
+const GRID = 18;
+const CELL = 22;
 const INITIAL_SPEED = 150;
 
 export default function Page() {
@@ -38,11 +38,14 @@ export default function Page() {
     <main
       style={{
         minHeight: "100dvh",
-        display: "grid",
-        placeItems: "center",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
         background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         color: "#fff",
-        padding: 16,
+        padding: "16px",
+        overflow: "auto",
       }}
     >
       {!isConnected ? (
@@ -383,14 +386,17 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
 
   return (
     <section style={{ 
-      display: "grid", 
-      gap: 16, 
-      placeItems: "center",
-      padding: 20,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12, 
+      alignItems: "center",
+      padding: "16px",
       background: "rgba(255, 255, 255, 0.1)",
-      borderRadius: 24,
+      borderRadius: 20,
       backdropFilter: "blur(10px)",
-      boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
+      boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+      maxWidth: "100%",
+      width: "fit-content"
     }}>
       <header style={{ textAlign: "center", width: "100%" }}>
         <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900 }}>🐍 Snake</h1>
@@ -411,45 +417,42 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         width={GRID * CELL} 
         height={GRID * CELL}
         style={{ 
-          border: "4px solid rgba(255, 255, 255, 0.2)", 
-          borderRadius: 16,
-          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
+          border: "3px solid rgba(255, 255, 255, 0.2)", 
+          borderRadius: 12,
+          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)",
+          maxWidth: "100%",
+          height: "auto",
+          aspectRatio: "1/1"
         }} 
       />
 
       {!gameStarted && !gameOver && (
         <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
           textAlign: "center",
-          background: "rgba(0, 0, 0, 0.8)",
-          padding: "30px 50px",
-          borderRadius: 20,
-          backdropFilter: "blur(10px)"
+          padding: "20px",
+          background: "rgba(0, 0, 0, 0.6)",
+          borderRadius: 16,
+          backdropFilter: "blur(10px)",
+          marginTop: -10
         }}>
-          <p style={{ fontSize: 20, marginBottom: 20 }}>Ready to play?</p>
-          <p style={{ fontSize: 14, opacity: 0.7 }}>Use arrow keys, WASD, or swipe to move</p>
+          <p style={{ fontSize: 18, marginBottom: 10, margin: 0 }}>Ready to play?</p>
+          <p style={{ fontSize: 14, opacity: 0.7, margin: 0 }}>Use arrow keys, WASD, or swipe to move</p>
         </div>
       )}
 
       {gameOver && (
         <div style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
           textAlign: "center",
-          background: "rgba(0, 0, 0, 0.9)",
-          padding: "40px 60px",
+          padding: "30px 40px",
+          background: "rgba(0, 0, 0, 0.8)",
           borderRadius: 20,
-          backdropFilter: "blur(10px)"
+          backdropFilter: "blur(10px)",
+          marginTop: -10
         }}>
-          <h2 style={{ fontSize: 32, margin: 0, marginBottom: 10 }}>Game Over!</h2>
-          <p style={{ fontSize: 24, color: "#4facfe", marginBottom: 20 }}>Score: {score}</p>
+          <h2 style={{ fontSize: 28, margin: 0, marginBottom: 10 }}>Game Over!</h2>
+          <p style={{ fontSize: 22, color: "#4facfe", marginBottom: 10, margin: 0 }}>Score: {score}</p>
           {score === highScore && score > 0 && (
-            <p style={{ fontSize: 18, color: "#f093fb", marginBottom: 20 }}>🎉 New High Score!</p>
+            <p style={{ fontSize: 16, color: "#f093fb", margin: 0 }}>🎉 New High Score!</p>
           )}
         </div>
       )}
@@ -500,18 +503,18 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
       {/* D-Pad Controls */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(3, 70px)",
-        gap: 10,
-        padding: 20,
+        gridTemplateColumns: "repeat(3, 60px)",
+        gap: 8,
+        padding: 16,
         background: "rgba(0, 0, 0, 0.3)",
-        borderRadius: 20,
+        borderRadius: 16,
       }}>
         <div />
         <button
           onClick={() => handleDirChange("up")}
           style={{
-            width: 70,
-            height: 70,
+            width: 60,
+            height: 60,
             borderRadius: 15,
             border: "none",
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -530,8 +533,8 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         <button
           onClick={() => handleDirChange("left")}
           style={{
-            width: 70,
-            height: 70,
+            width: 60,
+            height: 60,
             borderRadius: 15,
             border: "none",
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -547,8 +550,8 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
           ←
         </button>
         <div style={{
-          width: 70,
-          height: 70,
+          width: 60,
+          height: 60,
           borderRadius: 15,
           background: "rgba(255, 255, 255, 0.1)",
           display: "flex",
@@ -561,8 +564,8 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         <button
           onClick={() => handleDirChange("right")}
           style={{
-            width: 70,
-            height: 70,
+            width: 60,
+            height: 60,
             borderRadius: 15,
             border: "none",
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -581,8 +584,8 @@ function Game({ onShare, playerAddress }: { onShare: (score: number) => void; pl
         <button
           onClick={() => handleDirChange("down")}
           style={{
-            width: 70,
-            height: 70,
+            width: 60,
+            height: 60,
             borderRadius: 15,
             border: "none",
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
