@@ -12,6 +12,17 @@ const INITIAL_SPEED = 150;
 export default function Page() {
   const [isConnected, setIsConnected] = useState(false);
   const [userAddress, setUserAddress] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading and auto-connect for Farcaster
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      setIsConnected(true);
+      setUserAddress("farcaster-user");
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const connectWallet = async () => {
     try {
@@ -48,7 +59,18 @@ export default function Page() {
         overflow: "auto",
       }}
     >
-      {!isConnected ? (
+      {isLoading ? (
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 80, animation: "pulse 1.5s infinite" }}>🐍</div>
+          <p style={{ fontSize: 20, marginTop: 20 }}>Loading Snake Game...</p>
+          <style jsx>{`
+            @keyframes pulse {
+              0%, 100% { opacity: 1; transform: scale(1); }
+              50% { opacity: 0.5; transform: scale(1.1); }
+            }
+          `}</style>
+        </div>
+      ) : !isConnected ? (
         <Gate onConnect={connectWallet} />
       ) : (
         <Game onShare={shareScore} playerAddress={userAddress ?? undefined} />
