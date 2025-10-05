@@ -7,6 +7,13 @@ import "./globals.css"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
+  other: {
+    "fc:miniapp": JSON.stringify({
+      version: "1",
+      imageUrl: "https://snakegamezerolog.vercel.app/snake-hero.png",
+      button: { title: "Launch Snake", action: { name: "Launch Snake", type: "launch_miniapp" } }
+    })
+  },
   title: "Snake Game - Fast and Classic Snake",
   description: "Smooth, touch-enabled classic snake game in your browser.",
   openGraph: {
@@ -34,18 +41,6 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-        <meta name="fc:miniapp" content='{
-          "version":"next",
-          "imageUrl":"/snake-hero.png",
-          "button":{
-            "title":"Play Snake Game",
-            "action":{
-              "type":"launch_miniapp",
-              "name":"Snake Game",
-              "url":"/"
-            }
-          }
-        }' />
       </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>{children}</Suspense>
