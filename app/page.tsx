@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 type Point = { x: number; y: number };
 type Dir = "up" | "down" | "left" | "right";
 
-const GRID = 25;
-const CELL = 20;
-const BASE_TICK_MS = 120;
+const GRID = 20;
+const CELL = 25;
+const INITIAL_SPEED = 150;
 
 export default function Page() {
   const [isConnected, setIsConnected] = useState(false);
@@ -15,10 +15,7 @@ export default function Page() {
 
   const connectWallet = async () => {
     try {
-      // For demo purposes, we'll simulate a connection
-      // In a real mini app, this would be handled by the Farcaster client
-      console.log("Connect wallet clicked - this would open Farcaster wallet connection");
-      alert("In a real Farcaster mini app, this would connect your wallet. For demo purposes, you can play without connecting!");
+      console.log("Connect wallet clicked");
       setIsConnected(true);
       setUserAddress("demo-user");
     } catch (error) {
@@ -30,17 +27,8 @@ export default function Page() {
     try {
       const url = typeof window !== "undefined" ? window.location.href : "";
       const shareText = `🐍 Just scored ${score} points in Snake! Can you beat my score? ${url}`;
-      
-      // Try to open Farcaster compose first, fallback to Twitter
       const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`;
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
-      
-      // Try Farcaster first, if it fails, try Twitter
-      try {
-        window.open(farcasterUrl, '_blank');
-      } catch {
-        window.open(twitterUrl, '_blank');
-      }
+      window.open(farcasterUrl, '_blank');
     } catch (error) {
       console.error("Failed to share score:", error);
     }
@@ -52,7 +40,7 @@ export default function Page() {
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
-        background: "#000",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         color: "#fff",
         padding: 16,
       }}
@@ -60,10 +48,7 @@ export default function Page() {
       {!isConnected ? (
         <Gate onConnect={connectWallet} />
       ) : (
-        <Game
-          onShare={shareScore}
-          playerAddress={userAddress ?? undefined}
-        />
+        <Game onShare={shareScore} playerAddress={userAddress ?? undefined} />
       )}
     </main>
   );
@@ -71,463 +56,549 @@ export default function Page() {
 
 function Gate({ onConnect }: { onConnect: () => void }) {
   return (
-    <section style={{ display: "grid", gap: 12, placeItems: "center", textAlign: "center" }}>
-      <h1 style={{ margin: 0 }}>🐍 Snake</h1>
-      <p style={{ opacity: 0.8, maxWidth: 420 }}>
-        Connect your wallet to start. You can play with keyboard arrows, on-screen controls, or touch swipes.
+    <section style={{ display: "grid", gap: 20, placeItems: "center", textAlign: "center", maxWidth: 500 }}>
+      <div style={{
+        fontSize: 80,
+        animation: "bounce 2s infinite",
+      }}>
+        🐍
+      </div>
+      <h1 style={{ 
+        margin: 0, 
+        fontSize: 48, 
+        fontWeight: 900,
+        background: "linear-gradient(135deg, #fff, #f0f0f0)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        textShadow: "0 4px 20px rgba(0,0,0,0.3)"
+      }}>
+        Snake Game
+      </h1>
+      <p style={{ opacity: 0.9, fontSize: 18, lineHeight: 1.6 }}>
+        Classic snake game with modern graphics. Use keyboard arrows, swipe gestures, or on-screen controls to play!
       </p>
       <button
         onClick={onConnect}
         style={{
-          padding: "16px 32px",
-          borderRadius: 12,
-          border: "2px solid #4caf50",
-          background: "linear-gradient(135deg, #4caf50, #45a049)",
+          padding: "20px 40px",
+          borderRadius: 50,
+          border: "none",
+          background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
           color: "#fff",
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: "bold",
           cursor: "pointer",
           transition: "all 0.3s ease",
-          boxShadow: "0 4px 15px rgba(76, 175, 80, 0.3)",
+          boxShadow: "0 10px 30px rgba(245, 87, 108, 0.4)",
         }}
         onMouseOver={(e) => {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 6px 20px rgba(76, 175, 80, 0.4)";
+          e.currentTarget.style.transform = "translateY(-3px) scale(1.05)";
+          e.currentTarget.style.boxShadow = "0 15px 40px rgba(245, 87, 108, 0.6)";
         }}
         onMouseOut={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
+          e.currentTarget.style.transform = "translateY(0) scale(1)";
+          e.currentTarget.style.boxShadow = "0 10px 30px rgba(245, 87, 108, 0.4)";
         }}
       >
-        🔗 Connect Wallet
+        🎮 Start Playing
       </button>
+      <style jsx>{`
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-20px); }
+        }
+      `}</style>
     </section>
   );
 }
 
 function Game({ onShare, playerAddress }: { onShare: (score: number) => void; playerAddress?: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const loopRef = useRef<number | null>(null);
-
   const [snake, setSnake] = useState<Point[]>([
-    { x: 8, y: 12 },
-    { x: 7, y: 12 },
-    { x: 6, y: 12 },
+    { x: 10, y: 10 },
+    { x: 9, y: 10 },
+    { x: 8, y: 10 },
   ]);
-  const [food, setFood] = useState<Point>({ x: 15, y: 12 });
+  const [food, setFood] = useState<Point>({ x: 15, y: 10 });
   const [dir, setDir] = useState<Dir>("right");
-  const [alive, setAlive] = useState(false);
+  const dirRef = useRef<Dir>("right");
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [speed, setSpeed] = useState(INITIAL_SPEED);
 
-  // dynamic speed (a little harder over time)
-  const tickMs = Math.max(70, BASE_TICK_MS - Math.floor(score / 30) * 10);
-
-  // --- Keyboard controls
+  // Sync dir with dirRef
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key;
+    dirRef.current = dir;
+  }, [dir]);
+
+  // Generate random food
+  const generateFood = () => {
+    let newFood: Point;
+    do {
+      newFood = {
+        x: Math.floor(Math.random() * GRID),
+        y: Math.floor(Math.random() * GRID),
+      };
+    } while (snake.some((s) => s.x === newFood.x && s.y === newFood.y));
+    return newFood;
+  };
+
+  // Keyboard controls
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!gameStarted || gameOver) return;
+      const key = e.key;
       setDir((prev) => {
-        if (k === "ArrowUp" && prev !== "down") return "up";
-        if (k === "ArrowDown" && prev !== "up") return "down";
-        if (k === "ArrowLeft" && prev !== "right") return "left";
-        if (k === "ArrowRight" && prev !== "left") return "right";
+        if ((key === "ArrowUp" || key === "w") && prev !== "down") return "up";
+        if ((key === "ArrowDown" || key === "s") && prev !== "up") return "down";
+        if ((key === "ArrowLeft" || key === "a") && prev !== "right") return "left";
+        if ((key === "ArrowRight" || key === "d") && prev !== "left") return "right";
         return prev;
       });
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [gameStarted, gameOver]);
 
-  // --- Touch swipe controls (improved)
+  // Touch controls
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
-    let startX = 0, startY = 0, active = false;
-    let lastMoveTime = 0;
 
-    const start = (e: TouchEvent) => {
-      if (!e.touches?.[0] || !alive) return;
-      e.preventDefault();
-      active = true;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      lastMoveTime = Date.now();
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (!gameStarted || gameOver) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
     };
 
-    const move = (e: TouchEvent) => {
-      if (!active || !e.touches?.[0] || !alive) return;
-      e.preventDefault();
-      
-      const now = Date.now();
-      if (now - lastMoveTime < 50) return; // Throttle moves
-      lastMoveTime = now;
-      
-      const currentX = e.touches[0].clientX;
-      const currentY = e.touches[0].clientY;
-      const dx = currentX - startX;
-      const dy = currentY - startY;
-      const absx = Math.abs(dx), absy = Math.abs(dy);
-      const TH = 30; // Increased threshold for better control
-      
-      if (absx > TH || absy > TH) {
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!gameStarted || gameOver) return;
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
         setDir((prev) => {
-          if (absx > absy) {
-            // horizontal
-            if (dx > 0 && prev !== "left") return "right";
-            if (dx < 0 && prev !== "right") return "left";
-          } else {
-            // vertical
-            if (dy > 0 && prev !== "up") return "down";
-            if (dy < 0 && prev !== "down") return "up";
-          }
+          if (dx > 30 && prev !== "left") return "right";
+          if (dx < -30 && prev !== "right") return "left";
           return prev;
         });
-        active = false; // Reset after successful move
-      }
-    };
-
-    const end = (e: TouchEvent) => {
-      if (!active) return;
-      e.preventDefault();
-      active = false;
-    };
-
-    canvas.addEventListener("touchstart", start, { passive: false });
-    canvas.addEventListener("touchmove", move, { passive: false });
-    canvas.addEventListener("touchend", end, { passive: false });
-    
-    return () => {
-      canvas.removeEventListener("touchstart", start);
-      canvas.removeEventListener("touchmove", move);
-      canvas.removeEventListener("touchend", end);
-    };
-  }, [alive]);
-
-  // --- Game step
-  function step() {
-    setSnake((prev) => {
-      const head = { ...prev[0] };
-      if (dir === "up") head.y -= 1;
-      if (dir === "down") head.y += 1;
-      if (dir === "left") head.x -= 1;
-      if (dir === "right") head.x += 1;
-
-      const hitWall = head.x < 0 || head.y < 0 || head.x >= GRID || head.y >= GRID;
-      const hitSelf = prev.some((p) => p.x === head.x && p.y === head.y);
-      if (hitWall || hitSelf) {
-        setAlive(false);
-        return prev;
-      }
-
-      const ate = head.x === food.x && head.y === food.y;
-      const next = [head, ...prev];
-      if (!ate) next.pop();
-      else {
-        setScore((s) => s + 10);
-        setFood({
-          x: Math.floor(Math.random() * GRID),
-          y: Math.floor(Math.random() * GRID),
+      } else {
+        setDir((prev) => {
+          if (dy > 30 && prev !== "up") return "down";
+          if (dy < -30 && prev !== "down") return "up";
+          return prev;
         });
       }
-      return next;
-    });
-  }
+    };
 
-  // --- First paint
+    canvas.addEventListener("touchstart", handleTouchStart);
+    canvas.addEventListener("touchend", handleTouchEnd);
+    return () => {
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [gameStarted, gameOver]);
+
+  // Game loop
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.width = GRID * CELL;
-      canvas.height = GRID * CELL;
-      render();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!gameStarted || gameOver) return;
 
-  // --- Loop
+    const interval = setInterval(() => {
+      setSnake((prevSnake) => {
+        const head = { ...prevSnake[0] };
+        const currentDir = dirRef.current;
+
+        // Move head
+        if (currentDir === "up") head.y -= 1;
+        if (currentDir === "down") head.y += 1;
+        if (currentDir === "left") head.x -= 1;
+        if (currentDir === "right") head.x += 1;
+
+        // Check wall collision
+        if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) {
+          setGameOver(true);
+          if (score > highScore) setHighScore(score);
+          return prevSnake;
+        }
+
+        // Check self collision
+        if (prevSnake.some((s) => s.x === head.x && s.y === head.y)) {
+          setGameOver(true);
+          if (score > highScore) setHighScore(score);
+          return prevSnake;
+        }
+
+        const newSnake = [head, ...prevSnake];
+
+        // Check food collision
+        if (head.x === food.x && head.y === food.y) {
+          setScore((s) => s + 10);
+          setFood(generateFood());
+          setSpeed((s) => Math.max(50, s - 5));
+        } else {
+          newSnake.pop();
+        }
+
+        return newSnake;
+      });
+    }, speed);
+
+    return () => clearInterval(interval);
+  }, [gameStarted, gameOver, food, speed, score, highScore]);
+
+  // Render game
   useEffect(() => {
-    if (!alive) return;
-    let last = performance.now();
-    function loop(now: number) {
-      if (now - last > tickMs) {
-        step();
-        last = now;
-      }
-      render();
-      loopRef.current = requestAnimationFrame(loop);
-    }
-    loopRef.current = requestAnimationFrame(loop);
-    return () => { if (loopRef.current) cancelAnimationFrame(loopRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [alive, dir, food, tickMs]);
-
-  function render() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    
-    // Clear canvas with gradient background
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, "#0f0f23");
-    gradient.addColorStop(1, "#1a1a2e");
-    ctx.fillStyle = gradient;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Clear canvas
+    const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    bgGradient.addColorStop(0, "#1a1a2e");
+    bgGradient.addColorStop(1, "#16213e");
+    ctx.fillStyle = bgGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid lines
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    // Draw grid
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
     ctx.lineWidth = 1;
     for (let i = 0; i <= GRID; i++) {
       ctx.beginPath();
       ctx.moveTo(i * CELL, 0);
-      ctx.lineTo(i * CELL, canvas.height);
+      ctx.lineTo(i * CELL, GRID * CELL);
       ctx.stroke();
-      
       ctx.beginPath();
       ctx.moveTo(0, i * CELL);
-      ctx.lineTo(canvas.width, i * CELL);
+      ctx.lineTo(GRID * CELL, i * CELL);
       ctx.stroke();
     }
 
-    // Draw food with glow effect
+    // Draw food with pulsing effect
+    const time = Date.now() / 200;
+    const pulse = Math.sin(time) * 3 + 3;
     const foodX = food.x * CELL + CELL / 2;
     const foodY = food.y * CELL + CELL / 2;
-    const foodRadius = CELL / 2 - 2;
     
-    // Glow effect
-    const foodGlow = ctx.createRadialGradient(foodX, foodY, 0, foodX, foodY, foodRadius + 5);
-    foodGlow.addColorStop(0, "rgba(255, 100, 100, 0.8)");
-    foodGlow.addColorStop(0.7, "rgba(255, 100, 100, 0.3)");
-    foodGlow.addColorStop(1, "rgba(255, 100, 100, 0)");
+    // Food glow
+    const foodGlow = ctx.createRadialGradient(foodX, foodY, 0, foodX, foodY, CELL / 2 + pulse);
+    foodGlow.addColorStop(0, "rgba(255, 107, 107, 1)");
+    foodGlow.addColorStop(0.5, "rgba(255, 107, 107, 0.5)");
+    foodGlow.addColorStop(1, "rgba(255, 107, 107, 0)");
     ctx.fillStyle = foodGlow;
     ctx.beginPath();
-    ctx.arc(foodX, foodY, foodRadius + 5, 0, Math.PI * 2);
+    ctx.arc(foodX, foodY, CELL / 2 + pulse, 0, Math.PI * 2);
     ctx.fill();
-    
+
     // Food body
-    const foodGradient = ctx.createRadialGradient(foodX, foodY, 0, foodX, foodY, foodRadius);
+    const foodGradient = ctx.createRadialGradient(foodX - 3, foodY - 3, 0, foodX, foodY, CELL / 2);
     foodGradient.addColorStop(0, "#ff6b6b");
-    foodGradient.addColorStop(0.7, "#ee5a52");
-    foodGradient.addColorStop(1, "#e74c3c");
+    foodGradient.addColorStop(1, "#ee5a6f");
     ctx.fillStyle = foodGradient;
     ctx.beginPath();
-    ctx.arc(foodX, foodY, foodRadius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Food highlight
-    ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.beginPath();
-    ctx.arc(foodX - 3, foodY - 3, 3, 0, Math.PI * 2);
+    ctx.arc(foodX, foodY, CELL / 2 - 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw snake with gradient and effects
-    snake.forEach((p, index) => {
-      const x = p.x * CELL;
-      const y = p.y * CELL;
+    // Draw snake
+    snake.forEach((segment, index) => {
+      const x = segment.x * CELL;
+      const y = segment.y * CELL;
       const isHead = index === 0;
-      
+
       if (isHead) {
-        // Snake head with gradient
-        const headGradient = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
-        headGradient.addColorStop(0, "#4ecdc4");
-        headGradient.addColorStop(0.5, "#44a08d");
-        headGradient.addColorStop(1, "#093637");
-        ctx.fillStyle = headGradient;
-        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
-        
-        // Head shine effect
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.fillRect(x + 2, y + 2, CELL / 2, CELL / 2);
-        
+        // Head gradient
+        const headGrad = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
+        headGrad.addColorStop(0, "#4facfe");
+        headGrad.addColorStop(1, "#00f2fe");
+        ctx.fillStyle = headGrad;
+        ctx.shadowColor = "rgba(79, 172, 254, 0.5)";
+        ctx.shadowBlur = 15;
+        ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+        ctx.shadowBlur = 0;
+
         // Eyes
+        const eyeSize = 3;
         ctx.fillStyle = "#fff";
         ctx.beginPath();
-        ctx.arc(x + CELL * 0.3, y + CELL * 0.3, 2, 0, Math.PI * 2);
+        ctx.arc(x + CELL * 0.35, y + CELL * 0.35, eyeSize, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x + CELL * 0.7, y + CELL * 0.3, 2, 0, Math.PI * 2);
+        ctx.arc(x + CELL * 0.65, y + CELL * 0.35, eyeSize, 0, Math.PI * 2);
         ctx.fill();
-        
-        // Eye pupils
+
+        // Pupils
         ctx.fillStyle = "#000";
         ctx.beginPath();
-        ctx.arc(x + CELL * 0.3, y + CELL * 0.3, 1, 0, Math.PI * 2);
+        ctx.arc(x + CELL * 0.35, y + CELL * 0.35, 1.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x + CELL * 0.7, y + CELL * 0.3, 1, 0, Math.PI * 2);
+        ctx.arc(x + CELL * 0.65, y + CELL * 0.35, 1.5, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Snake body with gradient
-        const bodyGradient = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
-        bodyGradient.addColorStop(0, "#6c5ce7");
-        bodyGradient.addColorStop(0.5, "#5f3dc4");
-        bodyGradient.addColorStop(1, "#4c63d2");
-        ctx.fillStyle = bodyGradient;
-        ctx.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
-        
-        // Body pattern
-        ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-        ctx.fillRect(x + 2, y + 2, CELL - 4, 2);
-        ctx.fillRect(x + 2, y + CELL - 4, CELL - 4, 2);
+        // Body gradient
+        const bodyGrad = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
+        const alpha = 1 - (index / snake.length) * 0.3;
+        bodyGrad.addColorStop(0, `rgba(99, 110, 250, ${alpha})`);
+        bodyGrad.addColorStop(1, `rgba(139, 92, 246, ${alpha})`);
+        ctx.fillStyle = bodyGrad;
+        ctx.shadowColor = "rgba(99, 110, 250, 0.3)";
+        ctx.shadowBlur = 10;
+        ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+        ctx.shadowBlur = 0;
       }
     });
-  }
+  }, [snake, food]);
 
-  function reset() {
+  const startGame = () => {
     setSnake([
-      { x: 8, y: 12 },
-      { x: 7, y: 12 },
-      { x: 6, y: 12 },
+      { x: 10, y: 10 },
+      { x: 9, y: 10 },
+      { x: 8, y: 10 },
     ]);
+    setFood(generateFood());
     setDir("right");
+    dirRef.current = "right";
     setScore(0);
-    setFood({ x: 15, y: 12 });
-    setAlive(true);
-  }
+    setSpeed(INITIAL_SPEED);
+    setGameOver(false);
+    setGameStarted(true);
+  };
 
-  // On-screen buttons (improved)
-  const Btn = (p: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button
-      {...p}
-      style={{
-        padding: "12px 16px",
-        borderRadius: 16,
-        border: "2px solid #4caf50",
-        background: "linear-gradient(135deg, #4caf50, #45a049)",
-        color: "#fff",
-        fontSize: 18,
-        fontWeight: "bold",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        boxShadow: "0 4px 15px rgba(76, 175, 80, 0.3)",
-        minWidth: "60px",
-        minHeight: "50px",
-      }}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.95)";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(76, 175, 80, 0.5)";
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.boxShadow = "0 4px 15px rgba(76, 175, 80, 0.3)";
-      }}
-    />
-  );
-
-  const DPadBtn = (p: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button
-      {...p}
-      style={{
-        padding: "8px",
-        borderRadius: 12,
-        border: "2px solid #6c5ce7",
-        background: "linear-gradient(135deg, #6c5ce7, #5f3dc4)",
-        color: "#fff",
-        fontSize: 24,
-        fontWeight: "bold",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        boxShadow: "0 4px 15px rgba(108, 92, 231, 0.3)",
-        width: "60px",
-        height: "60px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.9)";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(108, 92, 231, 0.5)";
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.boxShadow = "0 4px 15px rgba(108, 92, 231, 0.3)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "scale(1)";
-        e.currentTarget.style.boxShadow = "0 4px 15px rgba(108, 92, 231, 0.3)";
-      }}
-    />
-  );
+  const handleDirChange = (newDir: Dir) => {
+    setDir((prev) => {
+      if (newDir === "up" && prev !== "down") return newDir;
+      if (newDir === "down" && prev !== "up") return newDir;
+      if (newDir === "left" && prev !== "right") return newDir;
+      if (newDir === "right" && prev !== "left") return newDir;
+      return prev;
+    });
+  };
 
   return (
-    <section style={{ display: "grid", gap: 10, placeItems: "center" }}>
-      <header style={{ textAlign: "center" }}>
-        <h1 style={{ margin: 0 }}>🐍 Snake</h1>
-        <p style={{ opacity: 0.8, margin: 0 }}>
-          Player: {playerAddress ? shorten(playerAddress) : "Unknown"} • Score: {score}
-        </p>
+    <section style={{ 
+      display: "grid", 
+      gap: 16, 
+      placeItems: "center",
+      padding: 20,
+      background: "rgba(255, 255, 255, 0.1)",
+      borderRadius: 24,
+      backdropFilter: "blur(10px)",
+      boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
+    }}>
+      <header style={{ textAlign: "center", width: "100%" }}>
+        <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900 }}>🐍 Snake</h1>
+        <div style={{ display: "flex", gap: 30, justifyContent: "center", marginTop: 10 }}>
+          <div>
+            <div style={{ fontSize: 14, opacity: 0.8 }}>Score</div>
+            <div style={{ fontSize: 28, fontWeight: "bold", color: "#4facfe" }}>{score}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 14, opacity: 0.8 }}>Best</div>
+            <div style={{ fontSize: 28, fontWeight: "bold", color: "#f093fb" }}>{highScore}</div>
+          </div>
+        </div>
       </header>
 
       <canvas 
         ref={canvasRef} 
+        width={GRID * CELL} 
+        height={GRID * CELL}
         style={{ 
-          border: "3px solid #4caf50", 
+          border: "4px solid rgba(255, 255, 255, 0.2)", 
           borderRadius: 16,
-          boxShadow: "0 8px 32px rgba(76, 175, 80, 0.3)",
-          background: "linear-gradient(135deg, #0f0f23, #1a1a2e)"
+          boxShadow: "0 10px 40px rgba(0, 0, 0, 0.5)",
         }} 
       />
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-        {!alive ? <Btn onClick={reset}>Start</Btn> : <Btn onClick={() => setAlive(false)}>Pause</Btn>}
-        <Btn 
+      {!gameStarted && !gameOver && (
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          textAlign: "center",
+          background: "rgba(0, 0, 0, 0.8)",
+          padding: "30px 50px",
+          borderRadius: 20,
+          backdropFilter: "blur(10px)"
+        }}>
+          <p style={{ fontSize: 20, marginBottom: 20 }}>Ready to play?</p>
+          <p style={{ fontSize: 14, opacity: 0.7 }}>Use arrow keys, WASD, or swipe to move</p>
+        </div>
+      )}
+
+      {gameOver && (
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          textAlign: "center",
+          background: "rgba(0, 0, 0, 0.9)",
+          padding: "40px 60px",
+          borderRadius: 20,
+          backdropFilter: "blur(10px)"
+        }}>
+          <h2 style={{ fontSize: 32, margin: 0, marginBottom: 10 }}>Game Over!</h2>
+          <p style={{ fontSize: 24, color: "#4facfe", marginBottom: 20 }}>Score: {score}</p>
+          {score === highScore && score > 0 && (
+            <p style={{ fontSize: 18, color: "#f093fb", marginBottom: 20 }}>🎉 New High Score!</p>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+        {!gameStarted || gameOver ? (
+          <button
+            onClick={startGame}
+            style={{
+              padding: "16px 32px",
+              borderRadius: 50,
+              border: "none",
+              background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+              color: "#fff",
+              fontSize: 18,
+              fontWeight: "bold",
+              cursor: "pointer",
+              boxShadow: "0 8px 20px rgba(79, 172, 254, 0.4)",
+              transition: "all 0.3s ease"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+            onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+          >
+            {gameOver ? "🔄 Play Again" : "▶️ Start Game"}
+          </button>
+        ) : null}
+        <button
           onClick={() => onShare(score)}
           style={{
-            background: "linear-gradient(135deg, #2196f3, #1976d2)",
-            border: "2px solid #2196f3",
-            boxShadow: "0 4px 15px rgba(33, 150, 243, 0.3)",
+            padding: "16px 32px",
+            borderRadius: 50,
+            border: "none",
+            background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+            color: "#fff",
+            fontSize: 18,
+            fontWeight: "bold",
+            cursor: "pointer",
+            boxShadow: "0 8px 20px rgba(245, 87, 108, 0.4)",
+            transition: "all 0.3s ease"
           }}
+          onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
         >
           📤 Share Score
-        </Btn>
+        </button>
       </div>
 
-      {/* On-screen D-Pad (improved) */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 80px)",
-          gap: 8,
-          marginTop: 12,
-          userSelect: "none",
-          padding: "16px",
-          background: "rgba(0, 0, 0, 0.3)",
-          borderRadius: "20px",
-          backdropFilter: "blur(10px)",
-        }}
-      >
-        <span />
-        <DPadBtn onClick={() => setDir((d) => (d !== "down" ? "up" : d))}>↑</DPadBtn>
-        <span />
-        <DPadBtn onClick={() => setDir((d) => (d !== "right" ? "left" : d))}>←</DPadBtn>
+      {/* D-Pad Controls */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 70px)",
+        gap: 10,
+        padding: 20,
+        background: "rgba(0, 0, 0, 0.3)",
+        borderRadius: 20,
+      }}>
+        <div />
+        <button
+          onClick={() => handleDirChange("up")}
+          style={{
+            width: 70,
+            height: 70,
+            borderRadius: 15,
+            border: "none",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "#fff",
+            fontSize: 28,
+            cursor: "pointer",
+            boxShadow: "0 5px 15px rgba(102, 126, 234, 0.4)",
+            transition: "all 0.2s ease"
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.9)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+        >
+          ↑
+        </button>
+        <div />
+        <button
+          onClick={() => handleDirChange("left")}
+          style={{
+            width: 70,
+            height: 70,
+            borderRadius: 15,
+            border: "none",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "#fff",
+            fontSize: 28,
+            cursor: "pointer",
+            boxShadow: "0 5px 15px rgba(102, 126, 234, 0.4)",
+            transition: "all 0.2s ease"
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.9)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+        >
+          ←
+        </button>
         <div style={{
-          width: "60px",
-          height: "60px",
-          borderRadius: "12px",
-          background: "linear-gradient(135deg, #2c2c54, #40407a)",
-          border: "2px solid #6c5ce7",
+          width: 70,
+          height: 70,
+          borderRadius: 15,
+          background: "rgba(255, 255, 255, 0.1)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#fff",
-          fontSize: "20px",
-          fontWeight: "bold",
+          fontSize: 28
         }}>
           🎮
         </div>
-        <DPadBtn onClick={() => setDir((d) => (d !== "left" ? "right" : d))}>→</DPadBtn>
-        <span />
-        <DPadBtn onClick={() => setDir((d) => (d !== "up" ? "down" : d))}>↓</DPadBtn>
-        <span />
+        <button
+          onClick={() => handleDirChange("right")}
+          style={{
+            width: 70,
+            height: 70,
+            borderRadius: 15,
+            border: "none",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "#fff",
+            fontSize: 28,
+            cursor: "pointer",
+            boxShadow: "0 5px 15px rgba(102, 126, 234, 0.4)",
+            transition: "all 0.2s ease"
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.9)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+        >
+          →
+        </button>
+        <div />
+        <button
+          onClick={() => handleDirChange("down")}
+          style={{
+            width: 70,
+            height: 70,
+            borderRadius: 15,
+            border: "none",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "#fff",
+            fontSize: 28,
+            cursor: "pointer",
+            boxShadow: "0 5px 15px rgba(102, 126, 234, 0.4)",
+            transition: "all 0.2s ease"
+          }}
+          onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.9)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
+        >
+          ↓
+        </button>
+        <div />
       </div>
-
-      {!alive && score > 0 && (
-        <p style={{ opacity: 0.7, marginTop: 4 }}>Game Over. Final score: {score}</p>
-      )}
     </section>
   );
 }
