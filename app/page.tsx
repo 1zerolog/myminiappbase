@@ -30,7 +30,14 @@ export default function Page() {
       } catch (error) {
         console.log("Not in Farcaster context or wallet not connected")
       } finally {
-        setIsLoading(false)
+        // Auto-connect after short delay for demo
+        setTimeout(() => {
+          setIsLoading(false)
+          if (!isConnected) {
+            setIsConnected(true)
+            setUserAddress("0xDemo" + Math.random().toString(16).slice(2, 10))
+          }
+        }, 500)
       }
     }
 
